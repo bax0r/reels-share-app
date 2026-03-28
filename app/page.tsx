@@ -8,103 +8,121 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 );
 
-const USERS: any = {
-  user1: "9fK!2mX#7qL@pZ",
-  user2: "3Qa$8vN!5rT@wY"
-};
+const USERS = [
+  { username: "user1", password: "ComplexPass1!" },
+  { username: "user2", password: "ComplexPass2!" }
+];
 
-export default function App() {
-  const [user, setUser] = useState<any>(null);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+export default function HomePage() {
+  const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
+  const [loginUser, setLoginUser] = useState("");
+  const [loginPass, setLoginPass] = useState("");
+  const [reels, setReels] = useState<string[]>([]);
+  const [message, setMessage] = useState("");
+  const [chat, setChat] = useState<{ user: string; text: string }[]>([]);
 
-  const [reels, setReels] = useState<any[]>([]);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [input, setInput] = useState("");
-  const [chat, setChat] = useState("");
-
-  const login = () => {
-    if (USERS[username] === password) setUser(username);
-    else alert("wrong login");
-  };
-
-  const getEmbed = (url: string) => {
-    try {
-      const id = url.split("/reel/")[1].split("/")[0];
-      return `https://www.instagram.com/reel/${id}/embed`;
-    } catch {
-      return null;
-    }
-  };
-
-  const loadData = async () => {
-    const { data: r } = await supabase.from("reels").select("*").order("created_at", { ascending: false });
-    const { data: m } = await supabase.from("messages").select("*").order("created_at");
-    setReels(r || []);
-    setMessages(m || []);
-  };
-
+  // Daily reset at midnight
   useEffect(() => {
-    if (user) loadData();
-    const i = setInterval(loadData, 3000);
-    return () => clearInterval(i);
-  }, [user]);
+    const now = new Date();
+    const millisUntilMidnight =
+      new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() -
+      now.getTime();
+    const timeout = setTimeout(() => {
+      setReels([]);
+      setChat([]);
+    }, millisUntilMidnight);
+    return () => clearTimeout(timeout);
+  }, [reels, chat]);
 
-  const addReel = async () => {
-    await supabase.from("reels").insert({ url: input, user_name: user });
-    setInput("");
+  const handleLogin = () => {
+    const user = USERS.find(u => u.username === loginUser && u.password === loginPass);
+    if (user) setLoggedInUser(user.username);
+    else alert("Invalid credentials");
   };
 
-  const sendMsg = async () => {
-    await supabase.from("messages").insert({ message: chat, user_name: user });
-    setChat("");
+  const handleAddReel = () => {
+    if (!message) return;
+    setReels(prev => [...prev, message]);
+    setMessage("");
   };
 
-  const clearBoard = async () => {
-    if (!confirm("Clear everything?")) return;
-    await supabase.from("reels").delete().neq("id", "");
-    await supabase.from("messages").delete().neq("id", "");
-    loadData();
+  const handleSendChat = () => {
+    if (!message || !loggedInUser) return;
+    setChat(prev => [...prev, { user: loggedInUser, text: message }]);
+    setMessage("");
   };
 
-  if (!user) {
+  const handleClearBoard = () => {
+    setReels([]);
+    setChat([]);
+  };
+
+  if (!loggedInUser)
     return (
-      <div style={{ padding: 40 }}>
-        <h2>Login</h2>
-        <input placeholder="user" onChange={e => setUsername(e.target.value)} />
-        <input placeholder="pass" type="password" onChange={e => setPassword(e.target.value)} />
-        <button onClick={login}>Login</button>
+      <div style={{ padding: 20 }}>
+        <h1>Login</h1>
+        <input
+          placeholder="Username"
+          value={loginUser}
+          onChange={e => setLoginUser(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={loginPass}
+          onChange={e => setLoginPass(e.target.value)}
+        />
+        <button onClick={handleLogin}>Login</button>
       </div>
     );
-  }
 
   return (
-    <div style={{ padding: 10 }}>
-      <h3>Logged in as {user}</h3>
+    <div style={{ padding: 20 }}>
+      <h1>Welcome, {loggedInUser}</h1>
 
-      <button onClick={clearBoard}>Clear Board</button>
+      <div>
+        <h2>Share Reel</h2>
+        <input
+          placeholder="Instagram Reel URL"
+          value={message}
+          onChange={e => setMessage(e.target.value)}
+        />
+        <button onClick={handleAddReel}>Add Reel</button>
+      </div>
 
-      <h2>Add Reel</h2>
-      <input value={input} onChange={e => setInput(e.target.value)} />
-      <button onClick={addReel}>Add</button>
-
-      <h2>Reels</h2>
-      {reels.map(r => (
-        <div key={r.id}>
-          <p>{r.user_name}</p>
-          <iframe src={getEmbed(r.url)} width="100%" height="400" />
-        </div>
-      ))}
-
-      <h2>Chat</h2>
-      <div style={{ height: 200, overflow: "auto" }}>
-        {messages.map(m => (
-          <p key={m.id}><b>{m.user_name}:</b> {m.message}</p>
+      <div>
+        <h2>Reels Board</h2>
+        {reels.map((url, i) => (
+          <iframe
+            key={i}
+            src={url}
+            width="320"
+            height="480"
+            style={{ margin: "10px 0" }}
+            allow="autoplay; encrypted-media"
+          />
         ))}
       </div>
 
-      <input value={chat} onChange={e => setChat(e.target.value)} />
-      <button onClick={sendMsg}>Send</button>
+      <div>
+        <h2>Chat</h2>
+        {chat.map((c, i) => (
+          <div key={i}>
+            <b>{c.user}: </b>
+            {c.text}
+          </div>
+        ))}
+        <input
+          placeholder="Message"
+          value={message}
+          onChange={e => setMessage(e.target.value)}
+        />
+        <button onClick={handleSendChat}>Send</button>
+      </div>
+
+      <div>
+        <button onClick={handleClearBoard}>Clear Board</button>
+      </div>
     </div>
   );
 }
