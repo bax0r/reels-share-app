@@ -63,15 +63,19 @@ export default function ReelsChatBoard() {
       )
       .subscribe();
 
-    // --- Realtime chat subscription ---
-    const chatChannel = supabase
-      .channel("chat-channel")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat" },
-        (payload) => setMessages((prev) => [...prev, payload.new])
-      )
-      .subscribe();
+// --- Realtime chat subscription ---
+const chatChannel = supabase
+  .channel("chat-channel")
+  .on(
+    "postgres_changes",
+    { event: "INSERT", schema: "public", table: "chat" },
+    (payload) =>
+      setMessages((prev) => [
+        ...prev,
+        payload.new as { user: string; text: string },
+      ])
+  )
+  .subscribe();
 
     return () => {
       supabase.removeChannel(reelChannel);
