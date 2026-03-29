@@ -2,10 +2,14 @@
   "compilerOptions": {
     "target": "es6",
     "lib": ["dom", "es2017"],
-    "jsx": "preserve",
+    "module": "esnext",
     "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
     "esModuleInterop": true,
-    "strict": false
+    "strict": false,
+    "jsx": "react-jsx",
+    "skipLibCheck": true
   },
   "include": ["app/**/*"]
 }
