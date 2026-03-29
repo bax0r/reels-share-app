@@ -3,23 +3,22 @@
 import { useState, useEffect } from "react";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// ------------------ Supabase setup (client-only) ------------------
+// ---------------- Supabase client ----------------
 const SUPABASE_URL = "https://astuejjjoggcpxtkiivm.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzdHVlampqb2dnY3B4dGtpaXZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MzUzMzYsImV4cCI6MjA5MDMxMTMzNn0.jxYTomV0QwuLTTAI8K1x4hbdPP884ARuMa8QAfiTxCk";
 
-// ------------------ Hardcoded users ------------------
+// ---------------- Hardcoded users ----------------
 const USERS = [
-  { username: "user1", password: "ComplexPassword1!" },
-  { username: "user2", password: "ComplexPassword2!" }
+  { username: "User1", password: "ComplexPassword1!" },
+  { username: "User2", password: "ComplexPassword2!" }
 ];
 
-// ------------------ Helper function ------------------
 function isValidUser(username: string, password: string) {
   return USERS.some((u) => u.username === username && u.password === password);
 }
 
-// ------------------ Component ------------------
+// ---------------- Component ----------------
 export default function ReelsChatApp() {
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
@@ -29,27 +28,25 @@ export default function ReelsChatApp() {
   const [messages, setMessages] = useState<{ user: string; text: string }[]>([]);
   const [newMessage, setNewMessage] = useState("");
 
-  // ------------------ Initialize Supabase client on client-side ------------------
+  // ---------------- Initialize Supabase client ----------------
   useEffect(() => {
-    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    setSupabase(supabaseClient);
+    const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    setSupabase(client);
   }, []);
 
-  // ------------------ Load data from Supabase ------------------
+  // ---------------- Load data ----------------
   useEffect(() => {
     if (!supabase) return;
-
     async function loadData() {
       const { data: reelData } = await supabase.from("reels").select("*");
       setReels(reelData?.map((r: any) => r.url) || []);
-
       const { data: chatData } = await supabase.from("chat").select("*");
       setMessages(chatData || []);
     }
     loadData();
   }, [supabase]);
 
-  // ------------------ Submit new reel ------------------
+  // ---------------- Add reel ----------------
   const handleAddReel = async () => {
     if (!newReelUrl || !supabase) return;
     setReels((prev) => [...prev, newReelUrl]);
@@ -57,7 +54,7 @@ export default function ReelsChatApp() {
     setNewReelUrl("");
   };
 
-  // ------------------ Send chat message ------------------
+  // ---------------- Send message ----------------
   const handleSendMessage = async () => {
     if (!newMessage || !loggedInUser || !supabase) return;
     const msgObj = { user: loggedInUser, text: newMessage };
@@ -66,7 +63,7 @@ export default function ReelsChatApp() {
     setNewMessage("");
   };
 
-  // ------------------ Clear board ------------------
+  // ---------------- Clear board ----------------
   const handleClearBoard = async () => {
     if (!supabase) return;
     setReels([]);
@@ -75,7 +72,7 @@ export default function ReelsChatApp() {
     await supabase.from("chat").delete().neq("id", 0);
   };
 
-  // ------------------ Daily auto-reset ------------------
+  // ---------------- Daily reset ----------------
   useEffect(() => {
     const now = new Date();
     const msUntilMidnight =
@@ -87,7 +84,7 @@ export default function ReelsChatApp() {
     return () => clearTimeout(timer);
   }, [reels, messages]);
 
-  // ------------------ Login form ------------------
+  // ---------------- Login form ----------------
   if (!loggedInUser) {
     return (
       <div style={{ padding: 20, maxWidth: 400, margin: "0 auto" }}>
@@ -117,6 +114,7 @@ export default function ReelsChatApp() {
               alert("Invalid credentials");
             }
           }}
+          style={{ width: "100%", padding: "8px 0" }}
         >
           Login
         </button>
@@ -124,35 +122,63 @@ export default function ReelsChatApp() {
     );
   }
 
-  // ------------------ Main App ------------------
+  // ---------------- Main App ----------------
   return (
-    <div style={{ padding: 20, maxWidth: 600, margin: "0 auto" }}>
-      <h1>Welcome, {loggedInUser}</h1>
+    <div
+      style={{
+        padding: 20,
+        maxWidth: 600,
+        margin: "0 auto",
+        display: "flex",
+        flexDirection: "column",
+        gap: 20
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <h1>Welcome, {loggedInUser}</h1>
+        <button onClick={handleClearBoard} style={{ padding: "6px 12px" }}>
+          Clear Board
+        </button>
+      </div>
 
-      <button onClick={handleClearBoard} style={{ marginBottom: 20 }}>
-        Clear Board
-      </button>
+      {/* Reels submission */}
+      <div style={{ display: "flex", gap: 10 }}>
+        <input
+          placeholder="Paste Reel URL"
+          value={newReelUrl}
+          onChange={(e) => setNewReelUrl(e.target.value)}
+          style={{ flex: 1, padding: 8 }}
+        />
+        <button onClick={handleAddReel} style={{ padding: "8px 12px" }}>
+          Add Reel
+        </button>
+      </div>
 
-      <h2>Share an Instagram Reel</h2>
-      <input
-        placeholder="Paste Reel URL"
-        value={newReelUrl}
-        onChange={(e) => setNewReelUrl(e.target.value)}
-        style={{ width: "100%", marginBottom: 10 }}
-      />
-      <button onClick={handleAddReel}>Add Reel</button>
-
-      <div style={{ marginTop: 20 }}>
-        <h3>Reels Board</h3>
+      {/* Reels board */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+          gap: 10
+        }}
+      >
         {reels.map((url, i) => (
-          <div key={i} style={{ marginBottom: 10 }}>
+          <div
+            key={i}
+            style={{
+              border: "1px solid #ccc",
+              borderRadius: 8,
+              overflow: "hidden",
+              position: "relative"
+            }}
+          >
             <iframe
               src={url.replace(
                 "https://www.instagram.com",
                 "https://www.instagram.com/embed"
               )}
-              width="320"
-              height="480"
+              width="100%"
+              height="400"
               allowFullScreen
               style={{ border: "none" }}
             ></iframe>
@@ -160,11 +186,13 @@ export default function ReelsChatApp() {
         ))}
       </div>
 
-      <div style={{ marginTop: 20 }}>
+      {/* Chat */}
+      <div>
         <h3>Chat</h3>
         <div
           style={{
             border: "1px solid #ccc",
+            borderRadius: 6,
             padding: 10,
             maxHeight: 200,
             overflowY: "auto",
@@ -172,18 +200,22 @@ export default function ReelsChatApp() {
           }}
         >
           {messages.map((m, i) => (
-            <div key={i}>
+            <div key={i} style={{ marginBottom: 4 }}>
               <strong>{m.user}:</strong> {m.text}
             </div>
           ))}
         </div>
-        <input
-          placeholder="Type a message"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          style={{ width: "100%", marginBottom: 10 }}
-        />
-        <button onClick={handleSendMessage}>Send</button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <input
+            placeholder="Type a message"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            style={{ flex: 1, padding: 8 }}
+          />
+          <button onClick={handleSendMessage} style={{ padding: "8px 12px" }}>
+            Send
+          </button>
+        </div>
       </div>
     </div>
   );
