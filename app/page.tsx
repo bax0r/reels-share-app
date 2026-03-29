@@ -18,6 +18,12 @@ function isValidUser(username: string, password: string) {
   return USERS.some((u) => u.username === username && u.password === password);
 }
 
+// ---------------- Extract Instagram Reel ID ----------------
+function extractReelId(url: string) {
+  const match = url.match(/instagram\.com\/reel\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : null;
+}
+
 // ---------------- Component ----------------
 export default function ReelsChatApp() {
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
@@ -162,28 +168,41 @@ export default function ReelsChatApp() {
           gap: 10
         }}
       >
-        {reels.map((url, i) => (
-          <div
-            key={i}
-            style={{
-              border: "1px solid #ccc",
-              borderRadius: 8,
-              overflow: "hidden",
-              position: "relative"
-            }}
-          >
-            <iframe
-              src={url.replace(
-                "https://www.instagram.com",
-                "https://www.instagram.com/embed"
+        {reels.map((url, i) => {
+          const reelId = extractReelId(url);
+          const thumbUrl = reelId
+            ? `https://instagram.com/p/${reelId}/media/?size=l`
+            : "";
+
+          return (
+            <div
+              key={i}
+              style={{
+                border: "1px solid #ccc",
+                borderRadius: 8,
+                overflow: "hidden",
+                textAlign: "center"
+              }}
+            >
+              {thumbUrl ? (
+                <a href={url} target="_blank" rel="noopener noreferrer">
+                  <img
+                    src={thumbUrl}
+                    alt="Reel thumbnail"
+                    style={{ width: "100%", objectFit: "cover" }}
+                  />
+                  <div style={{ padding: 4, fontSize: 12, color: "#555" }}>
+                    View on Instagram
+                  </div>
+                </a>
+              ) : (
+                <a href={url} target="_blank" rel="noopener noreferrer">
+                  Open Reel
+                </a>
               )}
-              width="100%"
-              height="400"
-              allowFullScreen
-              style={{ border: "none" }}
-            ></iframe>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
       {/* Chat */}
