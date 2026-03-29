@@ -31,7 +31,6 @@ export default function ReelsChatBoard() {
   const [newReelUrl, setNewReelUrl] = useState("");
   const [messages, setMessages] = useState<{ user: string; text: string }[]>([]);
   const [newMessage, setNewMessage] = useState("");
-
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // ---------------- Initialize Supabase ----------------
@@ -40,7 +39,7 @@ export default function ReelsChatBoard() {
     setSupabase(client);
   }, []);
 
-  // ---------------- Load initial data + subscribe ----------------
+  // ---------------- Load data + realtime subscriptions ----------------
   useEffect(() => {
     if (!supabase) return;
 
@@ -54,21 +53,29 @@ export default function ReelsChatBoard() {
 
     loadData();
 
-    // Subscribe to new reels
-    const reelSub = supabase
-      .from("reels")
-      .on("INSERT", (payload) => setReels((prev) => [...prev, payload.new.url]))
+    // --- Realtime reels subscription ---
+    const reelChannel = supabase
+      .channel("reels-channel")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "reels" },
+        (payload) => setReels((prev) => [...prev, payload.new.url])
+      )
       .subscribe();
 
-    // Subscribe to new chat messages
-    const chatSub = supabase
-      .from("chat")
-      .on("INSERT", (payload) => setMessages((prev) => [...prev, payload.new]))
+    // --- Realtime chat subscription ---
+    const chatChannel = supabase
+      .channel("chat-channel")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat" },
+        (payload) => setMessages((prev) => [...prev, payload.new])
+      )
       .subscribe();
 
     return () => {
-      supabase.removeSubscription(reelSub);
-      supabase.removeSubscription(chatSub);
+      supabase.removeChannel(reelChannel);
+      supabase.removeChannel(chatChannel);
     };
   }, [supabase]);
 
@@ -148,7 +155,7 @@ export default function ReelsChatBoard() {
     );
   }
 
-  // ---------------- Main Board ----------------
+  // ---------------- Main Sticky Board ----------------
   return (
     <div
       style={{
@@ -169,7 +176,7 @@ export default function ReelsChatBoard() {
         </button>
       </div>
 
-      {/* Reels submission */}
+      {/* Reels input */}
       <div style={{ display: "flex", gap: 5 }}>
         <input
           placeholder="Paste Reel URL"
@@ -239,7 +246,7 @@ export default function ReelsChatBoard() {
         })}
       </div>
 
-      {/* Chat section */}
+      {/* Chat section (sticky) */}
       <div
         style={{
           borderTop: "1px solid #ccc",
