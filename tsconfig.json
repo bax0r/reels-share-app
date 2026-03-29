@@ -3,7 +3,7 @@
     "target": "es6",
     "lib": ["dom", "es2017"],
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "node",        // <- must NOT be node10
     "resolveJsonModule": true,
     "isolatedModules": true,
     "esModuleInterop": true,
